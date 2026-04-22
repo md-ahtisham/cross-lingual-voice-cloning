@@ -1,0 +1,132 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Cross-Lingual Voice Cloning Pipeline — Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
+# HuggingFace dataset
+dataset:
+  name: "ymoslem/acl-6060"
+  split: "dev"
+  # Columns that contain translated text (must match HF column names exactly)
+  text_columns:
+    en: "text_en"
+    ar: "text_ar"
+    de: "text_de"
+    fa: "text_fa"
+    fr: "text_fr"
+    ja: "text_ja"
+    nl: "text_nl"
+    pt: "text_pt"
+    ru: "text_ru"
+    tr: "text_tr"
+    zh: "text_zh"
+
+# Languages to generate clones for (subset of the above)
+target_languages:
+  - ar
+  - de
+  - fa
+  - fr
+  - ja
+  - nl
+  - pt
+  - ru
+  - tr
+  - zh
+
+# Output root directory
+output_dir: "cross_lingual_voice_cloned_data"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Model configuration
+# Each entry:
+#   enabled   : whether to run this model
+#   model_path: HF model ID or local absolute path
+#   device    : which CUDA device to use (or "cpu")
+#   languages : list of language codes this model supports
+#   extra     : model-specific kwargs passed to the wrapper constructor
+# ─────────────────────────────────────────────────────────────────────────────
+models:
+  CosyVoice3:
+    enabled: true
+    conda_python: "/Data/deepakkumar/miniconda3/envs/cosyvoice/bin/python"
+    # Absolute path to the cloned CosyVoice repo root
+    repo_path: "/Data/deepakkumar/ahtisam/cosy-voice/CosyVoice"
+    model_path: "/Data/deepakkumar/ahtisam/cosy-voice/CosyVoice/pretrained_models/Fun-CosyVoice3-0.5B"
+    device: "cuda:2"
+    # CosyVoice3 supports all 9 target langs + EN    import torch
+    print(torch.__version__)
+    print(torch.cuda.is_available())    import torch
+    print(torch.__version__)
+    print(torch.cuda.is_available())
+    languages: ["en", "de", "fr", "ja", "es", "it", "ru", "zh", "ko"]
+    extra: {}
+
+  Qwen3TTS:
+    enabled: true
+    conda_python: "/Data/deepakkumar/miniconda3/envs/qwen3-tts/bin/python"
+    model_path: "/mnt/storage/hf_cache/Qwen3-TTS-12Hz-1.7B-Base"   # or local path after download
+    device: "cuda:3"
+    languages: ["en", "zh", "fr", "de", "ja", "ko", "it", "es", "ru"]
+    extra:
+      dtype: "bfloat16"
+      attn_implementation: "sdpa"
+
+  VoxCPM:
+    enabled: true
+    conda_python: "/Data/deepakkumar/miniconda3/envs/voxcpm_env/bin/python"
+    model_path: "openbmb/VoxCPM1.5"
+    device: "cuda:4"
+    # VoxCPM is bilingual only
+    languages: ["en", "zh"]
+    extra:
+      optimize: false
+      cfg_value: 2.0
+      inference_timesteps: 10
+
+# for a config like:
+
+# device: cuda:2
+# audio_tokenizer_device: cuda:1
+# max_memory on 1,2,3
+# the worker now sees those GPUs together, and inside the worker they become local devices like:
+
+# configured cuda:2 -> local cuda:0
+# configured cuda:1 -> local cuda:1
+# configured cuda:3 -> local cuda:2
+
+
+  MossTTS:
+    enabled: true
+    conda_python: "/Data/deepakkumar/miniconda3/envs/moss-tts/bin/python"
+    model_path: "OpenMOSS-Team/MOSS-TTS"
+    device: "cuda:2"
+    languages: ["en", "zh", "fr","fa", "de", "ja", "ko", "it", "es", "ru","pt", "tr", "ar", "pl", "el", "sv", "pl", "da"]
+    extra:
+      audio_tokenizer_device: "cuda:3"
+      dtype: "bfloat16"
+      attn_implementation: "sdpa"
+      max_memory:
+        "2": "9GiB"
+        "4": "8GiB"
+
+
+  # CpsyVoice:
+  #   enabled: false   # flip to true once local env is ready
+  #   model_path: "/path/to/CpsyVoice/model"
+  #   device: "cuda:2"
+  #   languages: ["en", "zh", "fr"]
+  #   extra: {}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Generation settings
+# ─────────────────────────────────────────────────────────────────────────────
+generation:
+  # Max samples from the dataset to process (null = all)
+  max_samples: null
+  # Skip (log) a sample instead of crashing on error
+  skip_on_error: true
+
+# Logging
+logging:
+  level: "INFO"
+  log_file: "pipeline.log"
